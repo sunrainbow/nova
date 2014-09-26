@@ -68,9 +68,8 @@ class ConsolesController(wsgi.Controller):
 
     @wsgi.action('os-getVNCConsole-new')
     def get_vnc_console_new(self, req, id, body):
-        # If type is not supplied or unknown, get_vnc_console below will cope
-        console_type = body['os-getVNCConsole-new'].get('type')
-        body = {'os-getVNCConsole':{'type': console_type}}
+        body_dict = body['os-getVNCConsole-new']
+        body = {'os-getVNCConsole': body_dict}
 
         vnc_console = self.get_vnc_console(req, id, body)
         vnc_console_url = vnc_console['console'].get('url')
@@ -82,7 +81,7 @@ class ConsolesController(wsgi.Controller):
         param_dict = urlparse.parse_qs(parsed.query)
         token = param_dict["token"][0]
 
-        token_dict = {'consid': id,
+        token_dict = { 'consid': id,
                        'consolekeeper_host': CONF.consolekeeper.consolekeeper_host,
                        'consolekeeper_port': CONF.consolekeeper.consolekeeper_port,
                        'consolekeeper_expiry_sec': CONF.consolekeeper.consolekeeper_expiry_sec,
