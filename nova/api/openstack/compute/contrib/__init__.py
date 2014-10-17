@@ -31,8 +31,28 @@ ext_opts = [
                      'compute_extension option with nova.api.openstack.'
                      'compute.contrib.select_extensions'),
 ]
+
+consolekeeper_opts = [
+    cfg.StrOpt('consolekeeper_host',
+                default='',
+                help='consolekeeper_host'),
+    cfg.StrOpt('consolekeeper_port',
+                default='',
+                help='consolekeeper_port'),
+    cfg.IntOpt('consolekeeper_expiry_sec',
+                default=0,
+                help='consolekeeper_expiry_sec'),
+    cfg.IntOpt('consolekeeper_interval_sec',
+                default=0,
+                help='consolekeeper_interval_sec'),
+    cfg.IntOpt('suicide_sec',
+                default=0,
+                help='suicide_sec'),
+]
+
 CONF = cfg.CONF
 CONF.register_opts(ext_opts)
+CONF.register_opts(consolekeeper_opts, group='consolekeeper')
 
 LOG = logging.getLogger(__name__)
 
