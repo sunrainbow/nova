@@ -20,6 +20,15 @@ from nova import compute
 from nova import exception
 from nova.openstack.common.gettextutils import _
 
+from nova.i18n import _LW
+import urlparse
+from oslo.config import cfg
+from nova.openstack.common import memorycache
+from nova.openstack.common import jsonutils
+from nova.openstack.common import log as logging
+
+CONF = cfg.CONF
+LOG = logging.getLogger(__name__)
 
 authorize = extensions.extension_authorizer('compute', 'consoles')
 
@@ -28,6 +37,8 @@ class ConsolesController(wsgi.Controller):
     def __init__(self, *args, **kwargs):
         self.compute_api = compute.API()
         super(ConsolesController, self).__init__(*args, **kwargs)
+
+        self.mc = memorycache.get_client()
 
     @wsgi.action('os-getVNCConsole')
     def get_vnc_console(self, req, id, body):
@@ -53,6 +64,38 @@ class ConsolesController(wsgi.Controller):
             raise webob.exc.HTTPNotImplemented(explanation=msg)
 
         return {'console': {'type': console_type, 'url': output['url']}}
+
+    @wsgi.action('os-getVNCConsole-new')
+    def get_vnc_console_new(self, req, id, body):
+        body_dict = body['os-getVNCConsole-new']
+        body = {'os-getVNCConsole': body_dict}
+
+        vnc_console = self.get_vnc_console(req, id, body)
+        vnc_console_url = vnc_console['console'].get('url')
+
+        # parse url to get token, host, port
+        parsed = urlparse.urlparse(vnc_console_url)
+        vnc_host = parsed.hostname
+        vnc_port = parsed.port
+        param_dict = urlparse.parse_qs(parsed.query)
+        token = param_dict["token"][0]
+
+        token_dict = { 'consid': id,
+                       'consolekeeper_host': CONF.consolekeeper.consolekeeper_host,
+                       'consolekeeper_port': CONF.consolekeeper.consolekeeper_port,
+                       'consolekeeper_expiry_sec': CONF.consolekeeper.consolekeeper_expiry_sec,
+                       'consolekeeper_interval_sec': CONF.consolekeeper.consolekeeper_interval_sec,
+                       'vnc_host': vnc_host,
+                       'vnc_port': vnc_port,
+                       'suicide_sec': CONF.consolekeeper.suicide_sec}
+        data = jsonutils.dumps(token_dict)
+
+        if not self.mc.set(token.encode('UTF-8'),
+                           data):
+            LOG.warning(_LW("Token: %(token)s failed to save into memcached."),
+                            {'token': token})
+
+        return vnc_console
 
     @wsgi.action('os-getSPICEConsole')
     def get_spice_console(self, req, id, body):
